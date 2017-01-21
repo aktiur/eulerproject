@@ -1,4 +1,4 @@
-from .cycles import PathSet, combine_paths, normalize_path
+from .cycles import PathSet, normalize_path
 from pytest import raises
 
 simple_pathset = PathSet([('a', 'b'), ('c', 'd')])
@@ -10,15 +10,6 @@ def test_normalize_path():
     assert normalize_path(('a', 'b')) == ('a', 'b')
     assert normalize_path(('b', 'a')) == ('a', 'b')
     assert normalize_path(((0,1), (2,1))) == ((0,1), (2,1))
-
-
-def test_combine_paths():
-    assert combine_paths(('a', 'b'), ('b', 'c')) == ('a', 'c')
-    assert combine_paths(('c', 'b'), ('a', 'b')) == ('a', 'c')
-    assert combine_paths(('a', 'b'), ('a', 'd')) == ('b', 'd')
-
-    with raises(ValueError):
-        combine_paths(('a', 'b'), ('c', 'd'))
 
 
 def test_arcs():
@@ -37,27 +28,26 @@ def test_complex_points():
 
 
 def test_simple_ajout():
-    res, cycling = simple_pathset.extend(('e', 'f'))
+    res, cycling = simple_pathset.add(('e', 'f'))
 
     assert res.arcs() == {('a', 'b'), ('c', 'd'), ('e', 'f')}
-
+    assert not cycling
 
 def test_simple_extension():
-    res, cycling = simple_pathset.extend(('a', 'e'))
+    res, cycling = simple_pathset.add(('a', 'e'))
 
     assert res.arcs() == {('b', 'e'), ('c', 'd')}
     assert not cycling
 
-
 def test_simple_cycle():
-    res, cycling = simple_pathset.extend(('b', 'a'))
+    res, cycling = simple_pathset.add(('b', 'a'))
 
     assert res.arcs() == {('c', 'd')}
     assert cycling
 
 
 def test_double_extension():
-    res, cycling = simple_pathset.extend(('b', 'c'))
+    res, cycling = simple_pathset.add(('b', 'c'))
 
     assert res.arcs() == {('a', 'd')}
     assert not cycling
@@ -70,7 +60,7 @@ def test_chemins_non_disjoints():
 def test_complex_pathset_extension():
     complex_pathset = PathSet(complex_paths)
 
-    res, cycling = complex_pathset.extend((complex_paths[0][0], complex_paths[-1][-1]))
+    res, cycling = complex_pathset.add((complex_paths[0][0], complex_paths[-1][-1]))
 
     assert res.arcs() == {(complex_paths[0][1], complex_paths[-1][0])} | frozenset(complex_paths[1:-1])
     assert not cycling
@@ -79,7 +69,7 @@ def test_complex_pathset_extension():
 def test_complex_pathset_cycle():
     complex_pathset = PathSet(complex_paths)
 
-    res, cycling = complex_pathset.extend(complex_paths[-1])
+    res, cycling = complex_pathset.add(complex_paths[-1])
 
     assert res.arcs() == frozenset(complex_paths[:-1])
     assert cycling

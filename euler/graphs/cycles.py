@@ -1,24 +1,10 @@
 from collections import Counter, defaultdict
-from itertools import chain
+from functools import reduce
+import operator as op
 
 
 def normalize_path(path):
     return tuple(sorted(path))
-
-
-def combine_paths(path1, path2):
-    if path1[0] == path2[0]:
-        path = (path1[1], path2[1])
-    elif path1[0] == path2[1]:
-        path = (path1[1], path2[0])
-    elif path1[1] == path2[0]:
-        path = (path1[0], path2[1])
-    elif path1[1] == path2[1]:
-        path = (path1[0], path2[0])
-    else:
-        raise ValueError('arcs not combinable')
-
-    return normalize_path(path)
 
 
 class PathSet():
@@ -28,18 +14,23 @@ class PathSet():
         :param paths: an iterable of paths
         :param isolated_points: an iterable of points
         """
-        self._paths = paths = frozenset(normalize_path(path) for path in paths)
-
         self._points = points = {}
 
-        for a, b in paths:
-            if a in points or b in points:
-                raise ValueError('les morceaux de chemins ont des points en commun')
+        if paths is not None:
+            for a, b in paths:
+                if a in points or b in points:
+                    raise ValueError('les morceaux de chemins ont des points en commun')
 
-            points[a] = (a, b)
-            points[b] = (a, b)
+                points[a] = b
+                points[b] = a
 
-    def extend(self, new_path):
+    @classmethod
+    def _from_dict(cls, d):
+        ps = cls()
+        ps._points = d
+        return ps
+
+    def add(self, new_path):
         """Extend a pathset with an arc
 
         :param pathset:
@@ -47,51 +38,53 @@ class PathSet():
         :return: un tuple qui contient un nouveau pathset et un booléen qui indique si un cycle a été fermé
         """
 
-        paths = self._paths
-        points = self._points
-        new_path = normalize_path(new_path)
-
-        connected = frozenset(points[i] for i in new_path if i in points)
-
+        points = self._points.copy()
+        a, b = new_path
         cycling = False
-        res = []
 
-        for path in connected:
-            if path == new_path:
-                new_path = None
-                cycling = True
-            else:
-                new_path = combine_paths(path, new_path)
+        if a in points:
+            la = points[a]
+            del points[a]
+        else:
+            la = a
+        if b in points:
+            lb = points[b]
+            del points[b]
+        else:
+            lb = b
 
-        res = paths - connected
-        if new_path:
-            res |= {new_path}
+        if la == b:
+            cycling = True
+        else:
+            points[la] = lb
+            points[lb] = la
 
-        return PathSet(res), cycling
+        return self._from_dict(points), cycling
 
     def arcs(self):
-        return self._paths
+        return frozenset(normalize_path(path) for path in self._points.items())
 
     def points(self):
         return frozenset(self._points)
 
     def __iter__(self):
-        return iter(self._paths)
+        return iter(self.arcs())
 
     def __len__(self):
-        return len(self._paths)
+        return len(self._points) // 2
 
     def __contains__(self, item):
-        return item in self._paths
+        a, b = item
+        return a in self._points and self._points[a] == b
 
     def __eq__(self, other):
-        return self._paths == other._paths
+        return self._points == other._points
 
     def __hash__(self):
-        return hash(self._paths)
+        return hash(self.arcs())
 
     def __repr__(self):
-        return "PathSet({!r})".format(self._paths)
+        return "PathSet({!r})".format(self.arcs())
 
 
 class WeightSet():
@@ -115,6 +108,12 @@ class WeightSet():
     def __repr__(self):
         return "WeightSet(%r)" % (dict(self._counter),)
 
+    def values(self):
+        return self._counter.values()
+
+    def keys(self):
+        return self._counter.values()
+
 
 class PartialSolution():
     def __init__(self, pathset, single_points):
@@ -128,7 +127,7 @@ class PartialSolution():
         for sp in single_points:
             if len(forward_arcs[sp]) != 2:
                 return None
-            current, cycling = current.extend(forward_arcs[sp])
+            current, cycling = current.add(forward_arcs[sp])
 
             if cycling:
                 raise ValueError('Etendre les points isolés ne devrait pas créer de cycle')
@@ -154,7 +153,7 @@ class PartialSolution():
         point, *other_points = points
 
         for neighbour in forward_arcs[point]:
-            new_pathset, cycling = extended_pathset.extend((point, neighbour))
+            new_pathset, cycling = extended_pathset.add((point, neighbour))
             yield from self._successors(other_points, new_pathset, additional_cycles + int(cycling),
                                         unreachead_points - {neighbour}, forward_arcs)
 
@@ -202,6 +201,9 @@ class PartialSolutionSet():
     def __repr__(self):
         return "PartialSolutionSet(%r)" % (self._solution_dict,)
 
+    def cumulated_weight(self):
+        return reduce(op.add, self._solution_dict.values())
+
 
 class Problem():
     """Un problème de résolution de cycles
@@ -239,3 +241,7 @@ class Problem():
     def results(self):
         self._compute_solution()
         return self._computed[-1]
+
+    def main_weight(self):
+        self._compute_solution()
+        return self._computed[-1]._solution_dict[PartialSolution(PathSet(), {})]
