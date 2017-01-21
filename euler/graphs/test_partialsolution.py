@@ -12,10 +12,11 @@ def test_egalite():
 
 
 def test_simple_single_extension():
-    res = simple_ps_with_isolated.extend_single_points({'e': ['g', 'h'], 'f': ['i', 'j']})
+    res, reached = simple_ps_with_isolated.extend_single_points({'e': ['g', 'h'], 'f': ['i', 'j']})
 
     assert res is not None
     assert res.arcs() == frozenset([('a', 'b'), ('c', 'd'), ('g', 'h'), ('i', 'j')])
+    assert reached == {'g', 'h', 'i', 'j'}
 
 
 def test_no_single_extension():

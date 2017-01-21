@@ -12,7 +12,6 @@ class PathSet():
         """
 
         :param paths: an iterable of paths
-        :param isolated_points: an iterable of points
         """
         self._points = points = {}
 
@@ -31,6 +30,10 @@ class PathSet():
         return ps
 
     def add(self, new_path):
+        ps, cycling = self.extend([new_path])
+        return ps, bool(cycling)
+
+    def extend(self, new_paths):
         """Extend a pathset with an arc
 
         :param pathset:
@@ -39,27 +42,28 @@ class PathSet():
         """
 
         points = self._points.copy()
-        a, b = new_path
-        cycling = False
+        cycles = 0
 
-        if a in points:
-            la = points[a]
-            del points[a]
-        else:
-            la = a
-        if b in points:
-            lb = points[b]
-            del points[b]
-        else:
-            lb = b
+        for a, b in new_paths:
 
-        if la == b:
-            cycling = True
-        else:
-            points[la] = lb
-            points[lb] = la
+            if a in points:
+                la = points[a]
+                del points[a]
+            else:
+                la = a
+            if b in points:
+                lb = points[b]
+                del points[b]
+            else:
+                lb = b
 
-        return self._from_dict(points), cycling
+            if la == b:
+                cycles += 1
+            else:
+                points[la] = lb
+                points[lb] = la
+
+        return self._from_dict(points), cycles
 
     def arcs(self):
         return frozenset(normalize_path(path) for path in self._points.items())
@@ -123,26 +127,30 @@ class PartialSolution():
     def extend_single_points(self, forward_arcs):
         current = self._pathset
         single_points = self._single_points
+        reached = []
 
         for sp in single_points:
-            if len(forward_arcs[sp]) != 2:
-                return None
-            current, cycling = current.add(forward_arcs[sp])
+            neighbours = forward_arcs[sp]
+            if len(neighbours) != 2:
+                return None, None
+
+            current, cycling = current.add(neighbours)
+            reached.extend(neighbours)
 
             if cycling:
                 raise ValueError('Etendre les points isolés ne devrait pas créer de cycle')
 
-        return current
+        return current, frozenset(reached)
 
     def successors(self, next_partition, forward_arcs):
         # let's identify the points we'll have to extend
         points = self._pathset.points()
-        extended_pathset = self.extend_single_points(forward_arcs)
+        extended_pathset, points_reached = self.extend_single_points(forward_arcs)
 
         # Si on ne peut pas étendre les points isolés, pas de possibilités
         if extended_pathset is not None:
             yield from self._successors(points, extended_pathset, 0,
-                                        frozenset(next_partition) - extended_pathset.points(),
+                                        frozenset(next_partition) - points_reached,
                                         forward_arcs)
 
     def _successors(self, points, extended_pathset, additional_cycles, unreachead_points, forward_arcs):
