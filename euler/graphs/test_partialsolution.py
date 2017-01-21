@@ -1,8 +1,10 @@
 from pytest import raises
 from .cycles import PartialSolution, PathSet
+from .grid import code
 
 simple_ps = PartialSolution(PathSet([('a', 'b')]), [])
 simple_ps_with_isolated = PartialSolution(PathSet([('a', 'b'), ('c', 'd')]), ['e', 'f'])
+
 
 def test_egalite():
     assert PartialSolution(PathSet([('b', 'a'), ('c', 'd')]), {'e'}) == PartialSolution(
@@ -75,4 +77,20 @@ def test_very_complicated_extension():
         (PartialSolution(PathSet([('g', 'j')]), {'l'}), 0),
         (PartialSolution(PathSet([('g', 'k')]), {'l'}), 0),
         (PartialSolution(PathSet([]), {'g', 'l'}), 1),
+    }
+
+
+partition_5 = {code(j, 4-j) for j in range(5)}
+forward_arcs_5 = {code(j, 3-j): [code(j+1, 3-j), code(j, 4-j)] for j in range(4)}
+
+def test_variants5_1():
+    ps = PartialSolution(
+        PathSet([('a3', 'b2')]), {'d0'}
+    )
+
+    assert set(ps.successors(partition_5, forward_arcs_5)) == {
+        (PartialSolution(PathSet([('d1', 'e0'), ('a4', 'b3')]), {'c2'}), 0),
+        (PartialSolution(PathSet([('d1', 'e0'), ('a4', 'c2')]), {'b3'}), 0),
+        (PartialSolution(PathSet([('d1', 'e0'), ('b3', 'c2')]), {'a4'}), 0),
+        (PartialSolution(PathSet([('d1', 'e0'),]), {'a4', 'c2'}), 1),
     }
