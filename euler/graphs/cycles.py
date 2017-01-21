@@ -112,6 +112,9 @@ class WeightSet():
     def __hash__(self):
         return hash(self._counter)
 
+    def __repr__(self):
+        return "WeightSet(%r)" % (dict(self._counter),)
+
 
 class PartialSolution():
     def __init__(self, pathset, single_points):
@@ -138,11 +141,10 @@ class PartialSolution():
         extended_pathset = self.extend_single_points(forward_arcs)
 
         # Si on ne peut pas étendre les points isolés, pas de possibilités
-        if extended_pathset is None:
-            return
-
-        yield from self._successors(points, extended_pathset, 0, frozenset(next_partition) - extended_pathset.points(),
-                                    forward_arcs)
+        if extended_pathset is not None:
+            yield from self._successors(points, extended_pathset, 0,
+                                        frozenset(next_partition) - extended_pathset.points(),
+                                        forward_arcs)
 
     def _successors(self, points, extended_pathset, additional_cycles, unreachead_points, forward_arcs):
         if not points:
@@ -196,3 +198,44 @@ class PartialSolutionSet():
 
     def __hash__(self):
         return hash(frozenset(self._solution_dict.items()))
+
+    def __repr__(self):
+        return "PartialSolutionSet(%r)" % (self._solution_dict,)
+
+
+class Problem():
+    """Un problème de résolution de cycles
+
+    Contraintes à respecter :
+    * le graphe doit déjà avoir été partitionné
+    * l'algorithme actuel ne gère que les cas où les noeuds n'ont au maximum que deux voisins en avant
+      (dans la partition suivante)
+
+    """
+
+    def __init__(self, partitions, forward_arcs):
+        self._partitions = partitions
+        self._forward_arcs = forward_arcs
+        self._computed = None
+
+    def _compute_solution(self):
+        if self._computed is None:
+            start_state = PartialSolutionSet({
+                PartialSolution(PathSet([]), self._partitions[0]): WeightSet({0: 1})
+            })
+
+            self._computed = [start_state]
+
+            current = start_state
+
+            for next_partition in self._partitions[1:]:
+                current = current.extend(next_partition, self._forward_arcs)
+                self._computed.append(current)
+
+    def full_results(self):
+        self._compute_solution()
+        return self._computed
+
+    def results(self):
+        self._compute_solution()
+        return self._computed[-1]

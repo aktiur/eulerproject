@@ -1,8 +1,3 @@
-import networkx as nx
-
-__all__ = ['Graph']
-
-
 def square_grid(n):
     """
     Return a square_grid and a partition

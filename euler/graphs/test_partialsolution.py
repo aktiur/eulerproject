@@ -4,7 +4,6 @@ from .cycles import PartialSolution, PathSet
 simple_ps = PartialSolution(PathSet([('a', 'b')]), [])
 simple_ps_with_isolated = PartialSolution(PathSet([('a', 'b'), ('c', 'd')]), ['e', 'f'])
 
-
 def test_egalite():
     assert PartialSolution(PathSet([('b', 'a'), ('c', 'd')]), {'e'}) == PartialSolution(
         PathSet([('c', 'd'), ('a', 'b')]), {'e'})
@@ -46,7 +45,7 @@ def test_more_complicated_extension():
 
     successors = list(ps.successors(
         ['f', 'g', 'h', 'i', 'j', 'k'],
-        {'a': ['f', 'g'], 'b': ['h'], 'c':  ['i'], 'd': ['j'], 'e': ['g', 'h']},
+        {'a': ['f', 'g'], 'b': ['h'], 'c': ['i'], 'd': ['j'], 'e': ['g', 'h']},
     ))
 
     assert len(successors) == 2, "there should be two ways to prolong this partial solution"
@@ -66,7 +65,7 @@ def test_very_complicated_extension():
 
     next_partition = ['g', 'h', 'i', 'j', 'k', 'l']
     forward_arcs = {
-        'a': ['i'], 'b': ['g', 'j'], 'c':['g', 'k'], 'd': ['h'], 'e': ['h', 'j'], 'f': ['i', 'k']
+        'a': ['i'], 'b': ['g', 'j'], 'c': ['g', 'k'], 'd': ['h'], 'e': ['h', 'j'], 'f': ['i', 'k']
     }
 
     successors = frozenset(ps.successors(next_partition, forward_arcs))
