@@ -41,6 +41,39 @@ def test_simple_arc_extension():
 
 def test_more_complicated_extension():
     ps = PartialSolution(
-        PathSet([('a', 'b'), ('c', 'd')]),
-        {'e'}
+        PathSet([('a', 'b'), ('c', 'd')]), {'e'}
     )
+
+    successors = list(ps.successors(
+        ['f', 'g', 'h', 'i', 'j', 'k'],
+        {'a': ['f', 'g'], 'b': ['h'], 'c':  ['i'], 'd': ['j'], 'e': ['g', 'h']},
+    ))
+
+    assert len(successors) == 2, "there should be two ways to prolong this partial solution"
+
+    assert successors[0][1] == 0
+    assert successors[0][0] == PartialSolution(PathSet([('f', 'g'), ('i', 'j')]), {'k'})
+
+    assert successors[1][1] == 1
+    assert successors[1][0] == PartialSolution(PathSet([('i', 'j')]), {'k', 'f'})
+
+
+def test_very_complicated_extension():
+    ps = PartialSolution(
+        PathSet([('a', 'b'), ('c', 'd')]),
+        {'e', 'f'}
+    )
+
+    next_partition = ['g', 'h', 'i', 'j', 'k', 'l']
+    forward_arcs = {
+        'a': ['i'], 'b': ['g', 'j'], 'c':['g', 'k'], 'd': ['h'], 'e': ['h', 'j'], 'f': ['i', 'k']
+    }
+
+    successors = frozenset(ps.successors(next_partition, forward_arcs))
+
+    assert successors == {
+        (PartialSolution(PathSet([('k', 'j')]), {'l'}), 0),
+        (PartialSolution(PathSet([('g', 'j')]), {'l'}), 0),
+        (PartialSolution(PathSet([('g', 'k')]), {'l'}), 0),
+        (PartialSolution(PathSet([]), {'g', 'l'}), 1),
+    }

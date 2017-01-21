@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from itertools import chain
 
 
@@ -27,7 +27,6 @@ class PathSet():
 
         :param paths: an iterable of paths
         :param isolated_points: an iterable of points
-        :param weights: a counter of weights (for every number of cycles)
         """
         self._paths = paths = frozenset(normalize_path(path) for path in paths)
 
@@ -88,12 +87,30 @@ class PathSet():
     def __eq__(self, other):
         return self._paths == other._paths
 
+    def __hash__(self):
+        return hash(self._paths)
+
+    def __repr__(self):
+        return "PathSet({!r})".format(self._paths)
+
 
 class WeightSet():
     def __init__(self, w=None):
         if w is None:
             w = []
         self._counter = Counter(w)
+
+    def add_cycles(self, additional_cycles):
+        return WeightSet(Counter({n + additional_cycles: w for n, w in self._counter.items()}))
+
+    def __eq__(self, other):
+        return self._counter == other._counter
+
+    def __add__(self, other):
+        return WeightSet(self._counter + other._counter)
+
+    def __hash__(self):
+        return hash(self._counter)
 
 
 class PartialSolution():
@@ -116,30 +133,37 @@ class PartialSolution():
         return current
 
     def successors(self, next_partition, forward_arcs):
+        # let's identify the points we'll have to extend
+        points = self._pathset.points()
         extended_pathset = self.extend_single_points(forward_arcs)
 
         # Si on ne peut pas étendre les points isolés, pas de possibilités
         if extended_pathset is None:
             return
 
-        points = extended_pathset.points()
+        yield from self._successors(points, extended_pathset, 0, frozenset(next_partition) - extended_pathset.points(),
+                                    forward_arcs)
 
-        yield from self._successors(points, extended_pathset, 0, next_partition, forward_arcs)
-
-    def _successors(self, points, extended_pathset, additional_cycles, next_partition, forward_arcs):
+    def _successors(self, points, extended_pathset, additional_cycles, unreachead_points, forward_arcs):
         if not points:
-            yield PartialSolution(extended_pathset, next_partition - extended_pathset.points()), additional_cycles
+            yield PartialSolution(extended_pathset, unreachead_points), additional_cycles
             return
 
         point, *other_points = points
 
         for neighbour in forward_arcs[point]:
             new_pathset, cycling = extended_pathset.extend((point, neighbour))
-            yield from self._successors(other_points, new_pathset, additional_cycles + int(cycling), next_partition,
-                                        forward_arcs)
+            yield from self._successors(other_points, new_pathset, additional_cycles + int(cycling),
+                                        unreachead_points - {neighbour}, forward_arcs)
 
     def __eq__(self, other):
         return self._pathset == other._pathset and self._single_points == other._single_points
+
+    def __hash__(self):
+        return hash((self._pathset, self._single_points))
+
+    def __repr__(self):
+        return "PartialSolution({!r}, {!r})".format(self._pathset, self._single_points)
 
 
 class PartialSolutionSet():
@@ -148,8 +172,8 @@ class PartialSolutionSet():
     Chaque solution partielle associe un pathset, un ensemble de points isolés et des poids correspondants
     """
 
-    def __init__(self, partial_solutions=None):
-        pass
+    def __init__(self, solution_dict):
+        self._solution_dict = dict(solution_dict)
 
     def extend(self, next_partition, forward_arcs):
         """Renvoie
@@ -159,10 +183,16 @@ class PartialSolutionSet():
         :return:
         """
 
-    def __iter__(self):
-        """Itérateur qui renvoie les éléments de solution
+        res = defaultdict(WeightSet)
 
-        :return:
-        """
-        if False:
-            yield PartialSolutionSet()
+        for partial_solution, weights in self._solution_dict.items():
+            for new_solution, additional_cycles in partial_solution.successors(next_partition, forward_arcs):
+                res[new_solution] += weights.add_cycles(additional_cycles)
+
+        return PartialSolutionSet(res)
+
+    def __eq__(self, other):
+        return self._solution_dict == other._solution_dict
+
+    def __hash__(self):
+        return hash(frozenset(self._solution_dict.items()))
