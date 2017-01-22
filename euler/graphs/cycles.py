@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from functools import reduce
+from itertools import product
 import operator as op
 
 
@@ -10,7 +11,6 @@ def normalize_path(path):
 class PathSet():
     def __init__(self, paths=None):
         """
-
         :param paths: an iterable of paths
         """
         self._points = points = {}
@@ -91,38 +91,9 @@ class PathSet():
         return "PathSet({!r})".format(self.arcs())
 
 
-class WeightSet():
-    def __init__(self, w=None):
-        if w is None:
-            w = []
-        self._counter = Counter(w)
-
+class WeightSet(Counter):
     def add_cycles(self, additional_cycles):
-        return WeightSet(Counter({n + additional_cycles: w for n, w in self._counter.items()}))
-
-    def __eq__(self, other):
-        return self._counter == other._counter
-
-    def __add__(self, other):
-        return WeightSet(self._counter + other._counter)
-
-    def __hash__(self):
-        return hash(self._counter)
-
-    def __repr__(self):
-        return "WeightSet(%r)" % (dict(self._counter),)
-
-    def __iter__(self):
-        return iter(self._counter)
-
-    def values(self):
-        return self._counter.values()
-
-    def keys(self):
-        return self._counter.values()
-
-    def items(self):
-        return self._counter.items()
+        return WeightSet(Counter({n + additional_cycles: w for n, w in self.items()}))
 
 
 class PartialSolution():
@@ -131,45 +102,32 @@ class PartialSolution():
         self._single_points = frozenset(single_points)
 
     def extend_single_points(self, forward_arcs):
-        current = self._pathset
-        single_points = self._single_points
-        reached = []
+        neighbours_list = [forward_arcs[sp] for sp in self._single_points]
+        if any(len(neighbours) != 2 for neighbours in neighbours_list):
+            return None, None
 
-        for sp in single_points:
-            neighbours = forward_arcs[sp]
-            if len(neighbours) != 2:
-                return None, None
+        new_pathset, cycles = self._pathset.extend(neighbours_list)
 
-            current, cycling = current.add(neighbours)
-            reached.extend(neighbours)
+        if cycles:
+            raise ValueError('Etendre les points isolés ne devrait pas créer de cycle')
 
-            if cycling:
-                raise ValueError('Etendre les points isolés ne devrait pas créer de cycle')
-
-        return current, frozenset(reached)
+        return new_pathset, frozenset(point for path in neighbours_list for point in path)
 
     def successors(self, next_partition, forward_arcs):
         # let's identify the points we'll have to extend
         points = self._pathset.points()
         extended_pathset, points_reached = self.extend_single_points(forward_arcs)
 
-        # Si on ne peut pas étendre les points isolés, pas de possibilités
-        if extended_pathset is not None:
-            yield from self._successors(points, extended_pathset, 0,
-                                        frozenset(next_partition) - points_reached,
-                                        forward_arcs)
-
-    def _successors(self, points, extended_pathset, additional_cycles, unreachead_points, forward_arcs):
-        if not points:
-            yield PartialSolution(extended_pathset, unreachead_points), additional_cycles
+        if extended_pathset is None:
+            # pas de possibilité d'étendre les points isolés, on s'arrête là
             return
 
-        point, *other_points = points
+        points_left = frozenset(next_partition) - points_reached
+        assignments = (tuple((p, n) for n in forward_arcs[p]) for p in points)
 
-        for neighbour in forward_arcs[point]:
-            new_pathset, cycling = extended_pathset.add((point, neighbour))
-            yield from self._successors(other_points, new_pathset, additional_cycles + int(cycling),
-                                        unreachead_points - {neighbour}, forward_arcs)
+        for new_paths in product(*assignments):
+            new_pathset, additional_cycles = extended_pathset.extend(new_paths)
+            yield PartialSolution(new_pathset, points_left - frozenset(n for p,n in new_paths)), additional_cycles
 
     def __eq__(self, other):
         return self._pathset == other._pathset and self._single_points == other._single_points
@@ -252,14 +210,15 @@ class Problem():
         self._compute_solution()
         return self._computed
 
-    def results(self):
-        self._compute_solution()
-        return self._computed[-1]
-
     def main_weight(self):
         self._compute_solution()
         return self._computed[-1]._solution_dict[PartialSolution(PathSet(), {})]
 
-    def num_permutations(self):
-        self._compute_solution()
+    def num_solutions(self):
         return sum(w * 2**nc for nc, w in self.main_weight().items())
+
+    def num_hamiltonian_cycles(self):
+        return self.main_weight()[1]
+
+    def num_2_factors(self):
+        return sum(self.main_weight().values())

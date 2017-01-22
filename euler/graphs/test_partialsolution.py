@@ -21,10 +21,10 @@ def test_simple_single_extension():
 
 def test_no_single_extension():
     res = simple_ps_with_isolated.extend_single_points({'e': ['f'], 'f': ['i', 'j']})
-    assert res is None
+    assert res == (None, None)
 
     res = simple_ps_with_isolated.extend_single_points({'e': ['f', 'g'], 'f': []})
-    assert res is None
+    assert res == (None, None)
 
 
 def test_single_cycle():
@@ -80,6 +80,20 @@ def test_very_complicated_extension():
         (PartialSolution(PathSet([]), {'g', 'l'}), 1),
     }
 
+def test_neighbouring_singles():
+    ps = PartialSolution(
+        PathSet([]), {'a', 'b'}
+    )
+
+    next_partition = ['c', 'd', 'f']
+    forward_arcs = {'a': ['c', 'd'], 'b': ['d', 'f']}
+
+    successors = frozenset(ps.successors(next_partition, forward_arcs))
+
+    assert successors == {
+        (PartialSolution(PathSet([('c', 'f')]), {}), 0),
+    }
+
 
 partition_5 = {code(j, 4-j) for j in range(5)}
 partition_6 = {code(j, 5-j) for j in range(6)}
@@ -113,41 +127,41 @@ def test_variants5_2():
 
 # TODO these tests !
 
-def test_variant6_1():
-    ps = PartialSolution(
-        PathSet([('a4', 'e0')]), {'b3', 'c2'}
-    )
-
-    assert set(ps.successors(partition_6, forward_arcs_6)) == {
-        (PartialSolution(PathSet([]), {}), 0),
-    }
-
-def test_variant6_2():
-    ps = PartialSolution(
-        PathSet([('a4', 'e0')]), {'b3', 'd1'}
-    )
-
-    assert set(ps.successors(partition_6, forward_arcs_6)) == {
-
-    }
-
-def test_variant6_3():
-    ps = PartialSolution(
-        PathSet([('a4', 'c2')]), {'b3', 'e0'}
-    )
-
-    assert set(ps.successors(partition_6, forward_arcs_6)) == {
-
-    }
-
-def test_variant6_4():
-    ps = PartialSolution(
-        PathSet(), {'a4', 'b3', 'e0'}
-    )
-
-    assert set(ps.successors(partition_6, forward_arcs_6)) == {
-
-    }
+# def test_variant6_1():
+#     ps = PartialSolution(
+#         PathSet([('a4', 'e0')]), {'b3', 'c2'}
+#     )
+#
+#     assert set(ps.successors(partition_6, forward_arcs_6)) == {
+#         (PartialSolution(PathSet([]), {}), 0),
+#     }
+#
+# def test_variant6_2():
+#     ps = PartialSolution(
+#         PathSet([('a4', 'e0')]), {'b3', 'd1'}
+#     )
+#
+#     assert set(ps.successors(partition_6, forward_arcs_6)) == {
+#
+#     }
+#
+# def test_variant6_3():
+#     ps = PartialSolution(
+#         PathSet([('a4', 'c2')]), {'b3', 'e0'}
+#     )
+#
+#     assert set(ps.successors(partition_6, forward_arcs_6)) == {
+#
+#     }
+#
+# def test_variant6_4():
+#     ps = PartialSolution(
+#         PathSet(), {'a4', 'b3', 'e0'}
+#     )
+#
+#     assert set(ps.successors(partition_6, forward_arcs_6)) == {
+#
+#     }
 
 # problematique : (PathSet(frozenset({('b5', 'd3')})), frozenset())
 # ancêtre : PathSet(frozenset({('a5', 'f0'), ('b4', 'd2')})), frozenset({'e1', 'c3'})
