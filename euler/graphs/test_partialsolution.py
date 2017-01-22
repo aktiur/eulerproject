@@ -82,7 +82,9 @@ def test_very_complicated_extension():
 
 
 partition_5 = {code(j, 4-j) for j in range(5)}
+partition_6 = {code(j, 5-j) for j in range(6)}
 forward_arcs_5 = {code(j, 3-j): [code(j+1, 3-j), code(j, 4-j)] for j in range(4)}
+forward_arcs_6 = {code(j, 4-j): [code(j+1, 4-j), code(j, 5-j)] for j in range(5)}
 
 def test_variants5_1():
     ps = PartialSolution(
@@ -95,3 +97,58 @@ def test_variants5_1():
         (PartialSolution(PathSet([('d1', 'e0'), ('b3', 'c2')]), {'a4'}), 0),
         (PartialSolution(PathSet([('d1', 'e0'),]), {'a4', 'c2'}), 1),
     }
+
+def test_variants5_2():
+    ps = PartialSolution(
+        PathSet([('a3', 'c1')]), {'d0'}
+    )
+
+    assert set(ps.successors(partition_5, forward_arcs_5)) == {
+        (PartialSolution(PathSet([('d1', 'e0'), ('a4', 'c2')]), {'b3'}), 0),
+        (PartialSolution(PathSet([('d1', 'e0'), ('b3', 'c2')]), {'a4'}), 0),
+        (PartialSolution(PathSet([('a4', 'e0')]), {'b3', 'c2'}), 0),
+        (PartialSolution(PathSet([('b3', 'e0'),]), {'a4', 'c2'}), 0),
+    }
+
+
+# TODO these tests !
+
+def test_variant6_1():
+    ps = PartialSolution(
+        PathSet([('a4', 'e0')]), {'b3', 'c2'}
+    )
+
+    assert set(ps.successors(partition_6, forward_arcs_6)) == {
+        (PartialSolution(PathSet([]), {}), 0),
+    }
+
+def test_variant6_2():
+    ps = PartialSolution(
+        PathSet([('a4', 'e0')]), {'b3', 'd1'}
+    )
+
+    assert set(ps.successors(partition_6, forward_arcs_6)) == {
+
+    }
+
+def test_variant6_3():
+    ps = PartialSolution(
+        PathSet([('a4', 'c2')]), {'b3', 'e0'}
+    )
+
+    assert set(ps.successors(partition_6, forward_arcs_6)) == {
+
+    }
+
+def test_variant6_4():
+    ps = PartialSolution(
+        PathSet(), {'a4', 'b3', 'e0'}
+    )
+
+    assert set(ps.successors(partition_6, forward_arcs_6)) == {
+
+    }
+
+# problematique : (PathSet(frozenset({('b5', 'd3')})), frozenset())
+# ancêtre : PathSet(frozenset({('a5', 'f0'), ('b4', 'd2')})), frozenset({'e1', 'c3'})
+# racine : PartialSolution(PathSet(frozenset({('a4', 'e0')})), frozenset({'c2', 'b3'}))

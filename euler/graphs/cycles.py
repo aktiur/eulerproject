@@ -112,11 +112,17 @@ class WeightSet():
     def __repr__(self):
         return "WeightSet(%r)" % (dict(self._counter),)
 
+    def __iter__(self):
+        return iter(self._counter)
+
     def values(self):
         return self._counter.values()
 
     def keys(self):
         return self._counter.values()
+
+    def items(self):
+        return self._counter.items()
 
 
 class PartialSolution():
@@ -253,3 +259,7 @@ class Problem():
     def main_weight(self):
         self._compute_solution()
         return self._computed[-1]._solution_dict[PartialSolution(PathSet(), {})]
+
+    def num_permutations(self):
+        self._compute_solution()
+        return sum(w * 2**nc for nc, w in self.main_weight().items())
