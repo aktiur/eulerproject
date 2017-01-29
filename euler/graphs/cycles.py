@@ -210,15 +210,15 @@ class Problem():
         self._compute_solution()
         return self._computed
 
-    def main_weight(self):
+    def weights(self):
         self._compute_solution()
         return self._computed[-1]._solution_dict[PartialSolution(PathSet(), {})]
 
     def num_solutions(self):
-        return sum(w * 2**nc for nc, w in self.main_weight().items())
+        return sum(w * 2**nc for nc, w in self.weights().items())
 
     def num_hamiltonian_cycles(self):
-        return self.main_weight()[1]
+        return self.weights()[1]
 
     def num_2_factors(self):
-        return sum(self.main_weight().values())
+        return sum(self.weights().values())

@@ -18,16 +18,19 @@ def square_grid(n):
     :return:
     """
 
-    n = int(n)
+    return rectangular_grid(n, n)
 
-    if n <= 0:
-        raise ValueError("n doit être strictement positif")
 
-    partitions = [frozenset(code(j, i-j) for j in range(max(0, i-n+1), min(i+1, n))) for i in range(2*n-1)]
-    forward_arcs = {code(i, j): [code(i+1, j), code(i, j+1)] for i in range(n-1) for j in range(n-1)}
-    for i in range(n-1):
+def rectangular_grid(m, n):
+    if m <= 0 or n <= 0:
+        raise ValueError("la taille de la grille doit être strictement positive")
+
+    partitions = [frozenset(code(i-j, j) for j in range(max(0, i-m+1), min(i+1, n))) for i in range(m+n - 1)]
+    forward_arcs = {code(i, j): [code(i+1, j), code(i, j+1)] for i in range(m-1) for j in range(n-1)}
+    for i in range(m-1):
         forward_arcs[code(i, n-1)] = [code(i+1, n-1)]
-        forward_arcs[code(n-1, i)] = [code(n-1, i+1)]
-    forward_arcs[code(n-1, n-1)] = []
+    for j in range(n-1):
+        forward_arcs[code(m-1, j)] = [code(m-1, j+1)]
+    forward_arcs[code(m-1, n-1)] = []
 
     return partitions, forward_arcs
